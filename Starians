@@ -1,0 +1,188 @@
+/starian-app
+│── /static
+│   ├── styles.css
+│   ├── script.js
+│── /templates
+│   ├── index.html
+│   ├── result.html
+│── app.py
+│── requirements.txt
+│── README.md
+
+import os
+import requests
+import random
+import cv2
+import numpy as np
+import sqlite3
+from flask import Flask, render_template, request, redirect, url_for, session
+from skimage.metrics import structural_similarity as ssim
+from bs4 import BeautifulSoup
+
+app = Flask(__name__)
+app.secret_key = "starian_secret"
+
+# Database setup
+def init_db():
+    conn = sqlite3.connect("starian.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            score INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# NASA API
+NASA_API_KEY = "DEMO_KEY"
+NASA_IMAGE_URL = "https://api.nasa.gov/planetary/apod"
+
+# Get a real celestial image
+def get_random_celestial_image():
+    try:
+        response = requests.get(NASA_IMAGE_URL, params={"api_key": NASA_API_KEY})
+        data = response.json()
+        return data.get("url"), data.get("title")
+    except Exception as e:
+        print(f"Error fetching NASA image: {e}")
+        return None, None
+
+# Find a visually similar celestial object
+def find_similar_celestial_image(query):
+    search_url = f"https://www.google.com/search?tbm=isch&q={query}+astronomy"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    
+    try:
+        response = requests.get(search_url, headers=headers)
+        soup = BeautifulSoup(response.text, "html.parser")
+        images = soup.find_all("img")
+        return images[random.randint(1, len(images) - 1)]["src"] if images else None
+    except Exception as e:
+        print(f"Error fetching similar image: {e}")
+        return None
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        user_choice = request.form.get("user_choice")
+        correct_choice = request.form.get("correct_choice")
+        username = session.get("username", "Guest")
+
+        conn = sqlite3.connect("starian.db")
+        cursor = conn.cursor()
+
+        if user_choice == correct_choice:
+            result = "Correct! You identified the celestial body accurately."
+            cursor.execute("UPDATE users SET score = score + 1 WHERE username = ?", (username,))
+        else:
+            result = f"Incorrect! You picked {user_choice}, but the actual celestial body was {correct_choice}."
+        
+        conn.commit()
+        conn.close()
+        return render_template("result.html", result=result, byline="Made by Nerians, for users of Starians.")
+
+    image_url, title = get_random_celestial_image()
+    similar_image_url = find_similar_celestial_image(title)
+
+    return render_template("index.html", image_url=image_url, similar_image_url=similar_image_url, title=title, byline="Made by Nerians, for users of Starians.")
+
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.form.get("username")
+    session["username"] = username
+
+    conn = sqlite3.connect("starian.db")
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR IGNORE INTO users (username) VALUES (?)", (username,))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for("index"))
+
+if __name__ == "__main__":
+    init_db()
+    app.run(debug=True)
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starian - Celestial Body Challenge</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Starian: AI vs Human Celestial Classification</h1>
+    <p>{{ byline }}</p>
+
+    <form method="POST">
+        <h2>Identify the real celestial body</h2>
+        <img src="{{ image_url }}" alt="Real Celestial Body" width="400">
+        <img src="{{ similar_image_url }}" alt="Fake Celestial Body" width="400">
+
+        <label>
+            <input type="radio" name="user_choice" value="real"> Left Image
+        </label>
+        <label>
+            <input type="radio" name="user_choice" value="fake"> Right Image
+        </label>
+
+        <input type="hidden" name="correct_choice" value="real">
+        <button type="submit">Submit</button>
+    </form>
+
+    <form method="POST" action="/login">
+        <input type="text" name="username" placeholder="Enter your name" required>
+        <button type="submit">Login</button>
+    </form>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result - Starian</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Game Result</h1>
+    <p>{{ result }}</p>
+    <p>{{ byline }}</p>
+    <a href="/">Play Again</a>
+</body>
+</html>
+
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 20px;
+}
+
+h1 {
+    color: #ffffff;
+    background-color: #333;
+    padding: 10px;
+}
+
+img {
+    border: 3px solid #ddd;
+    margin: 10px;
+}
+
+button {
+    padding: 10px 20px;
+    margin-top: 10px;
+    font-size: 16px;
+}
+
+pip install flask requests numpy opencv-python beautifulsoup4 skimage
+python app.py
+
+if__name__=="__main__":
+ init_db()
+app.run(debug=True)
