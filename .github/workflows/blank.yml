@@ -1,0 +1,38 @@
+import random
+from typing import List, Optional
+
+# Celestial bodies list
+CELESTIAL_BODIES: List[str] = [
+    "Mars", "Jupiter", "Saturn", "Andromeda Galaxy",
+    "Betelgeuse", "Vega", "Orion Nebula", "Triangulum Galaxy"
+]
+
+# Predefined similar celestial bodies
+SIMILAR_CELESTIAL_BODIES = {
+    "Mars": ["Mercury", "Io", "Phobos"],
+    "Jupiter": ["Saturn", "Neptune", "Ganymede"],
+    "Saturn": ["Jupiter", "Uranus", "Titan"],
+    "Andromeda Galaxy": ["Milky Way", "Triangulum Galaxy", "Messier 87"],
+    "Betelgeuse": ["Antares", "Aldebaran", "Rigel"],
+    "Vega": ["Altair", "Deneb", "Sirius"],
+    "Orion Nebula": ["Carina Nebula", "Eagle Nebula", "Crab Nebula"],
+    "Triangulum Galaxy": ["Andromeda Galaxy", "Messier 33", "Pinwheel Galaxy"]
+}
+
+def search_similar_celestial_body(target: str) -> Optional[str]:
+    """Simulate searching for a visually similar celestial body."""
+    return random.choice(SIMILAR_CELESTIAL_BODIES.get(target, ["Unknown"]))
+
+def main() -> None:
+    """Main execution function for Starian."""
+    target_body: str = random.choice(CELESTIAL_BODIES)
+    similar_body: Optional[str] = search_similar_celestial_body(target_body)
+
+    with open("results.txt", "w", encoding="utf-8") as f:
+        f.write(f"Target Celestial Body: {target_body}\n")
+        f.write(f"Similar Looking Celestial Body: {similar_body}\n")
+
+    print("Starian Execution Completed. Results saved.")
+
+if __name__ == "__main__":
+    main()
